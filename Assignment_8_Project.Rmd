@@ -1,0 +1,373 @@
+---
+title: "CPSC 444 Capstone Project"
+author: "Kavya Puranam"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+Climate change and varying environmental conditions endanger crop stability. Understanding the factors that influence crop growth and being able to predict these changes are important for farmers and breeders alike.
+
+Rice growth occurs in distinct phases such as vegetative, reproductive, and ripening. Vegetative is the initial growth stage from germination to panicle initiation, reproductive is Each phase is also sensitive to different environmental factors such as temperature and precipitation.
+
+This project aims to analyze spatial autocorrelation of environmental values and growth phase durations, investigate the relationship between environmental covariates and rice growth phases using spatial models, and predict the impact of environmental changes on rice growth in different locations using geographically weighted regression (GWR) and kriging. Spatial autocorrelation is important due to building the foundational understanding of how the data values show there may be something of interest in certain locations that requires further analysis. GWR is a spatial regression method used to predict a variable by fitting a regression equation to every variable in the dataset. By modeling the effects of environmental covariates such as precipitation, temperature, potential evapotranspiration on the growing phases such as vegetative, reproductive, and ripening we can develop predictive models to forecast phase durations under different environmental scenarios.
+ 
+We aim to bridge the gap between environmental science, agronomy, and spatial analytics through understanding rice growth and the impacts the environment can have in order to improve cultivation strategies and improve global food security initiatives.
+
+
+
+## Datasets
+The field data encompasses multiple locations 15 separate locations spread across Africa and Asia with varying climates, soil types, and agricultural practices reflecting the diverse growing conditions faced by rice crop globally. This diversity ensures the robustness of the models developed and their applicability to different regions. 
+
+Environmental data such as weather data PP The total precipitation (mm), DPT Dew-point temperature at two meters (°C·d-1), PET Potential evapotranspiration (mm·d-1), VPD Vapour pressure deficit (kPa·d-1), TM Mean temperature at two meters (°C·d-1), TR Temperature range (0C·d-1), APAR All-sky surface photosynthetically active radiation total (W·m-2), and CPAR Clear sky surface photosynthetically active radiation total (W·m-2) are used to create the analysis. Growing season dates are also used to calculate the growing phase periods.
+
+I used table S4 of the Multi-environment Genomic Selection in Rice Elite Breeding Lines study from the Supplementary Information of this study. This table shows the environmental covariates (ECs) of each environment throughout the whole growing season for the different phases: vegetative (VE), reproductive (RE), and ripening (RI). 
+
+For the model the key variables used were: 
+
+Response variable: Growth Phase Duration (either Vegetative, Reproductive, or Ripen) is the primary focus serving as the dependent variable in predictive modeling
+
+Predictor Variables: Environmental Variables  Precipitation (PP), temperature (TM), vapor pressure deficit (VPD), potential evapotranspiration (PET), all sky solar radiation (APAR) and clear sky solar radiation (CPAR). 
+
+Using these variables enables the development of robust predictive models to forecast optimal growth periods under varying environmental conditions and optimize planting stratefies for high-yield rice varieties. 
+
+## Methods 
+Data preprocessing 
+* Converting Easting and Northing values into Latitude 
+* Calculating growing phase durations from dates
+* Normalizing all environmental covariates for interpretability 
+
+Use semi-variograms to analyze spatial autocorrelation of the environmental covariates and the growth phase durations.
+
+Apply Geographically Weighted Regression to model spatially varying relationships between environmental covariates and growth durations and allows us to account for heterogeneity. 
+
+Kriging is used to predict rice growth phase durations in unmeasured locations to estimate theses values in regions where data is unavailable.
+
+The expected results for this is that there is autocorrelation between each growth period especially with the vegetative growth phase as environmental factors would typically effect the length of germination periods. I predict that there would be less autocorrelation in the ripening phase as that may take up less resources or environmental inputs.
+
+
+## Results and Impact 
+According to the Semi-Variogram of the Vegetative Phase, the range is large as it is hard to tell where the sill starts. We can say that spatial correlation extends over a large distance since there is autocorrelation.  
+
+The Semi-Variogram of the Reproductive Phase is the most steep where it goes from less than 100 semivariance to 200. This could mean that there is spatial dependence over the entire distance of increase which shows autocorrelation for these values as well.
+
+The Semi-Variogram of the Ripening Phase has the least steap increase which means that it nearby points could be less correlated than the rest of the phases. 
+
+Overall, there seems to be correlation in location of the Vegetative Phase and Reproductive Phase for the rice plants . 
+
+The map for the effects of precipitation on the Vegetation phase shows significant clusters of areas where less precipitation effected reduced the duration of the Vegetative phase. Similarly for the other phases as well. 
+
+The map for the effects of mean temperature on the phases shows that certain clusters are effected negatively or positively by temperatures, which in turn increase or decrease the duration of the phase. (Values of estimated coefficients for temperature changed due to the selection of the optimal bandwidth).
+
+Overall, the visualizations show there is significant autocorrelation with certain environmental variables which effect the duration of the growth phases of Oryza sativa. With this work, researchers can gain better insights into the principles of spatial statistics and it’s effects on genomics. Using predictive analytics breeders can consider a changing environment in their understanding of genetics and implement new strategies for future breeding.
+
+Future extensions of this can be used in research for Genotype-Environment Interaction Analysis where we can see how genetic traits change or interact with environmental factors which can enhance precision in breeding techniques for more climate and disease resistant crops. 
+
+Future studies can be also be done on the effects of environmental factors on depensation of rice crops by testing the growth rates or reproduction rates with varying environmental factors to see if a self-pollinating plant such as rice is effected significantly by the environment that could lead to depensation.
+
+## References 
+
+Gollini, I., Lu, B., Charlton, M., Brunsdon, C., & Harris, P. (2015). gwmodel: An r package for exploring spatial heterogeneity using geographically weighted models. Journal of Statistical Software, 63(17). https://doi.org/10.18637/jss.v063.i17
+
+Nguyen, V.H., Morantte, R.I.Z., Lopena, V. et al. Multi-environment Genomic Selection in Rice Elite Breeding Lines. Rice 16, 7 (2023). https://doi.org/10.1186/s12284-023-00623-6 
+
+Spatial autocorrelation—An overview | sciencedirect topics. (n.d.). Retrieved December 18, 2024, from https://www.sciencedirect.com/topics/computer-science/spatial-autocorrelation#:~:text=The%20term%20spatial%20autocorrelation%20refers,map%20shows%20positive%20spatial%20autocorrelation. 
+
+
+## Getting the Dataset
+
+```{r}
+library(tidyverse)
+library(sp)        
+library(gstat)     
+library(spdep)      
+library(spatialreg)
+library(sf)
+
+data <- read.csv("Assignment 8 Dataset.csv")
+head(data)
+#summary(data)
+#ggplot(data, aes(x=PP)) + geom_histogram(bins=15) + theme_minimal() + ggtitle("Distribution of Precipitation")
+```
+
+
+## First I need to convert the coordinates from Easting and Northing to Latitude and Longitude
+
+```{r}
+utm_coords <- data.frame( data["N_latitude"], data["E_longitude"])
+utm_coords 
+#guess for zone
+utm_crs <- "+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs"
+utm_sf <- st_as_sf(utm_coords, coords = c("E_longitude", "N_latitude"), crs = utm_crs)
+lat_lon_sf <- st_transform(utm_sf, crs = 4326)
+print(lat_lon_sf)
+coords <- st_coordinates(lat_lon_sf)
+data$N_latitude <- coords[, "Y"]
+data$E_longitude <- coords[, "X"]
+#check if N_lat and E_lon were changed into lat and lon values
+head(data)
+
+```
+
+## Calculate phase durations for transplating, flowering, and harvesting dates
+
+```{r}
+# Convert dates to Date objects
+data$Transplating_date <- as.Date(data$Transplating_date, format = "%Y-%m-%d")
+data$Harvesting_date <- as.Date(data$Harvesting_date, format = "%Y-%m-%d")
+data$First_lines_flowered_of_50. <- 
+as.Date(data$First_lines_flowered_of_50., format = "%Y-%m-%d")
+data$Last_lines_flowered_of._50. <- 
+as.Date(data$Last_lines_flowered_of._50., format = "%Y-%m-%d")
+
+
+# Calculate phase durations
+data$VE_Duration <- as.numeric(data$First_lines_flowered_of_50. - data$Transplating_date)
+data$RE_Duration <- as.numeric(data$Last_lines_flowered_of._50. - data$First_lines_flowered_of_50.)
+data$RI_Duration <- as.numeric(data$Harvesting_date - data$Last_lines_flowered_of._50.)
+data$Total_Duration <- as.numeric(data$Harvesting_date - data$Transplating_date)
+
+#normalize environmental covariates 
+#do this because we want features to be on a similar scale 
+normalize <- function(x) { (x - min(x)) / (max(x) - min(x)) }
+data <- data %>%
+  mutate(across(c(PP, DPT, PET, VPD, TM, TR, APAR, CPAR), normalize))
+```
+
+```{r}
+coordinates(data) <- ~E_longitude + N_latitude
+```
+## Semi Variogram Analysis
+Now I will generate a semi-variogram on an environmental covariate
+```{r}
+#generating a semi-variogram on a selected environmental covariate
+variogram_pp <- variogram(VE_Duration ~ 1, data)
+plot(variogram_pp)
+
+variogram_model <- fit.variogram(variogram_pp, model=vgm("Sph"))
+plot(variogram_pp, model=variogram_model)
+
+```
+```{r}
+#generating a semi-variogram on a selected environmental covariate
+variogram_pp <- variogram(RE_Duration ~ 1, data)
+plot(variogram_pp)
+
+variogram_model <- fit.variogram(variogram_pp, model=vgm("Sph"))
+plot(variogram_pp, model=variogram_model)
+
+```
+
+```{r}
+#generating a semi-variogram on a selected environmental covariate
+variogram_pp <- variogram(RI_Duration ~ 1, data)
+plot(variogram_pp)
+
+variogram_model <- fit.variogram(variogram_pp, model=vgm("Sph"))
+plot(variogram_pp, model=variogram_model)
+
+```
+
+# Geographically Weighted Regression 
+
+## Use GWR model to understand spatially varying effects of Precipitation (PP) on Vegetative phase duration (VE)
+
+```{r}
+library(spgwr)
+
+gwr_bandwidth <- gwr.sel(VE_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, 
+                         data = data, adapt = TRUE)
+
+ve_gwr_model <- gwr(VE_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, data=data, adapt = gwr_bandwidth)
+
+
+summary(ve_gwr_model)
+
+# Visualize the geographically varying coefficients
+library(tmap)
+tm_shape(ve_gwr_model$SDF) +
+  tm_dots(col = "PP", size = 0.5, title = "Precipitation Coefficients for VE Duration")
+```
+
+## Use GWR model to understand spatially varying effects of Precipitation (PP) on Reproductive phase duration (RE)
+
+```{r}
+library(spgwr)
+gwr_bandwidth <- gwr.sel(RE_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, 
+                         data = data, adapt = TRUE)
+
+gwr_model <- gwr(RE_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, data=data, bandwidth = gwr_bandwidth)
+
+# Print the results of the GWR model
+summary(gwr_model)
+
+# Visualize the geographically varying coefficients
+library(tmap)
+tm_shape(gwr_model$SDF) +
+  tm_dots(col = "PP", size = 0.5, title = "Precipitation Coefficients for RE Duration")
+```
+
+## USe GWR model to understand spatially varying effects of Precipitation (PP) on Ripen phase duration (RI)
+
+```{r}
+library(spgwr)
+
+gwr_bandwidth <- gwr.sel(RI_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, 
+                         data = data, adapt = TRUE)
+gwr_model <- gwr(RI_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, data=data, bandwidth = gwr_bandwidth)
+
+# Print the results of the GWR model
+summary(gwr_model)
+
+# Visualize the geographically varying coefficients
+library(tmap)
+tm_shape(gwr_model$SDF) +
+  tm_dots(col = "PP", size = 0.5, title = "Precipitation Coefficients For RI Duration")
+```
+
+## Use GWR model to understand spatially varying effects of Temperature Mean (TM) on Vegetative phase duration (VE)
+
+```{r}
+library(spgwr)
+
+gwr_bandwidth <- gwr.sel(VE_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, 
+                         data = data, adapt = TRUE)
+
+gwr_model <- gwr(VE_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, data=data, adapt = gwr_bandwidth)
+
+# Print the results of the GWR model
+summary(gwr_model)
+
+# Visualize the geographically varying coefficients
+#plot(gwr_model$SDF)
+library(tmap)
+tm_shape(gwr_model$SDF) +
+  tm_dots(col = "TM", size = 0.5, title = "Temperature Mean Coefficients for VE Duration")
+```
+
+## Use GWR model to understand spatially varying effects of Temperature Mean (TM) on Reproductive phase duration (RE)
+
+```{r}
+library(spgwr)
+
+gwr_bandwidth <- gwr.sel(RE_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, 
+                         data = data, adapt = TRUE)
+
+gwr_model <- gwr(RE_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, data=data, adapt = gwr_bandwidth)
+
+# Print the results of the GWR model
+summary(gwr_model)
+
+# Visualize the geographically varying coefficients
+#plot(gwr_model$SDF)
+library(tmap)
+tm_shape(gwr_model$SDF) +
+  tm_dots(col = "TM", size = 0.5, title = "Temperature Mean Coefficients for RE Duration")
+```
+
+## Use GWR model to understand spatially varying effects of Temperature Mean (TM) on Ripen phase duration (RI)
+
+```{r}
+library(spgwr)
+
+gwr_bandwidth <- gwr.sel(RI_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, 
+                         data = data, adapt = TRUE)
+
+gwr_model <- gwr(RI_Duration ~ PP + DPT + PET + VPD + TM + TR + APAR + CPAR, data=data, adapt = gwr_bandwidth)
+
+# Print the results of the GWR model
+summary(gwr_model)
+
+# Visualize the geographically varying coefficients
+#plot(gwr_model$SDF)
+library(tmap)
+tm_shape(gwr_model$SDF) +
+tm_dots(col = "TM", size = 0.5, title = "Temperature Mean Coefficients for RI Duration")
+```
+
+## Map the Mean Temperature on Growth Phase Duration Visually on a Global Map
+```{r}
+data_df <- as.data.frame(data)
+library(ggplot2)
+library(maps)
+
+world_map <- map_data("world")
+
+ggplot() +
+  geom_polygon(data = world_map, aes(x = long, y = lat, group = group), 
+               fill = "gray80", color = "white") +
+  geom_point(data = data_df, aes(x = E_longitude, y = N_latitude, 
+                              color = TM, size = VE_Duration), alpha = 0.8) +
+  scale_color_viridis_c(name = "Mean Temp") +
+  scale_size_continuous(name = "VE Duration") +
+  labs(title = "Impact of Temperature on Vegetative Phase Duration",
+       x = "Longitude", y = "Latitude") +
+  coord_quickmap(xlim = c(-20, 150), ylim = c(-40, 60)) +  # Restrict to Africa and Asia
+  theme_minimal()
+
+ggplot() +
+  geom_polygon(data = world_map, aes(x = long, y = lat, group = group), 
+               fill = "gray80", color = "white") +
+  geom_point(data = data_df, aes(x = E_longitude, y = N_latitude, 
+                              color = TM, size = RE_Duration), alpha = 0.8) +
+  scale_color_viridis_c(name = "Mean Temp") +
+  scale_size_continuous(name = "RE Duration") +
+  labs(title = "Impact of Temperature on Reproductive Phase Duration",
+       x = "Longitude", y = "Latitude") +
+  coord_quickmap(xlim = c(-20, 150), ylim = c(-40, 60)) +  
+  theme_minimal()
+
+ggplot() +
+  geom_polygon(data = world_map, aes(x = long, y = lat, group = group), 
+               fill = "gray80", color = "white") +
+  geom_point(data = data_df, aes(x = E_longitude, y = N_latitude, 
+                              color = TM, size = RI_Duration), alpha = 0.8) +
+  scale_color_viridis_c(name = "Mean Temp") +
+  scale_size_continuous(name = "RI Duration") +
+  labs(title = "Impact of Temperature on Ripening Phase Duration",
+       x = "Longitude", y = "Latitude") +
+  coord_quickmap(xlim = c(-20, 150), ylim = c(-40, 60)) +  
+  theme_minimal()
+
+```
+
+## Use kriging to interpolate Vegetation Duration values at unknown locations 
+
+```{r}
+library(sp)
+library(gstat)
+
+data_df <- as.data.frame(data)
+proj4string(data) <- CRS("+proj=longlat +datum=WGS84") 
+data_utm <- spTransform(data, CRS(utm_crs))  
+# Create an empirical variogram
+variogram_model <- variogram(VE_Duration ~ 1, data)
+
+# Fit a theoretical variogram model
+variogram_fit <- fit.variogram(variogram_model, model = vgm("Sph"))
+plot(variogram_model, variogram_fit)
+
+grd <- expand.grid(
+ longitude = seq(min(data$E_longitude), max(data$E_longitude), length.out = 100),
+  latitude = seq(min(data$N_latitude), max(data$N_latitude), length.out = 100)
+)
+coordinates(grd) <- ~longitude + latitude
+gridded(grd) <- TRUE
+proj4string(grd) <- CRS("+proj=longlat +datum=WGS84")
+
+# Ordinary Kriging
+kriging_result <- krige(VE_Duration ~ 1, data, grd, variogram_fit)
+
+kriging_result
+
+
+
+```
+
+
